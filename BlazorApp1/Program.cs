@@ -38,8 +38,7 @@ if (!app.Environment.IsDevelopment())
 app.UseAntiforgery();
 app.UseStaticFiles();
 
-// Add multiple health check endpoints for Azure
-app.MapGet("/", () => "BlazorApp1 is running!");
+// Add health check endpoints for Azure (removed conflicting root route)
 app.MapGet("/health", () => "Healthy");
 app.MapGet("/ready", () => "Ready");
 
