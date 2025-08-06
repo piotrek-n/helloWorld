@@ -32,7 +32,8 @@ Console.WriteLine($"Environment: {app.Environment.EnvironmentName}");
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+    // Removed app.UseHsts() for Docker/Azure Web App compatibility
+    // Azure handles SSL termination at the load balancer level
 }
 
 app.UseAntiforgery();
