@@ -1,0 +1,48 @@
+﻿name: Build and deploy to Azure Web App (Direct)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: web-afd-ag    # Zmień na swoją nazwę Azure Web App
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ./BlazorApp1/BlazorApp1.csproj
+
+    - name: Build application
+      run: dotnet build ./BlazorApp1/BlazorApp1.csproj --configuration Release --no-restore
+
+    - name: Publish application
+      run: dotnet publish ./BlazorApp1/BlazorApp1.csproj --configuration Release --no-build --output ./publish
+
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v3
+      with:
+        name: .net-app
+        path: ./publish
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./publish
