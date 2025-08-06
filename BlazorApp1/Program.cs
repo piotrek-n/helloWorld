@@ -6,61 +6,55 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Configure logging for Azure
+// Configure logging for Azure with more details
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-if (builder.Environment.IsDevelopment())
-{
-    builder.Logging.AddDebug();
-}
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-// Configure for Azure Web App Linux Container - improved port handling
+// Configure for Azure Web App Linux Container
 var port = Environment.GetEnvironmentVariable("WEBSITES_PORT") ?? 
            Environment.GetEnvironmentVariable("PORT") ?? "80";
 
-// Force binding to all interfaces for container environments
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(int.Parse(port));
-});
+Console.WriteLine($"[STARTUP] Configuring port: {port}");
+Console.WriteLine($"[STARTUP] Environment: {builder.Environment.EnvironmentName}");
+
+// Simple URL configuration for Azure Web App
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Log startup information
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("=== APPLICATION STARTING ===");
-logger.LogInformation($"Port: {port}");
-logger.LogInformation($"Environment: {app.Environment.EnvironmentName}");
-logger.LogInformation($"Content Root: {app.Environment.ContentRootPath}");
+// Log startup information immediately
+Console.WriteLine("=== APPLICATION STARTING ===");
+Console.WriteLine($"Port: {port}");
+Console.WriteLine($"Environment: {app.Environment.EnvironmentName}");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-//app.UseHttpsRedirection();
-
-
 app.UseAntiforgery();
-
 app.UseStaticFiles();
+
+// Add multiple health check endpoints for Azure
+app.MapGet("/", () => "BlazorApp1 is running!");
+app.MapGet("/health", () => "Healthy");
+app.MapGet("/ready", () => "Ready");
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Add health check endpoint for Azure
-app.MapGet("/health", () => "Healthy");
+Console.WriteLine("=== APPLICATION CONFIGURED, STARTING SERVER ===");
 
-// Log that application is ready
-logger.LogInformation("=== APPLICATION READY ===");
-
-// Graceful shutdown handling
-var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
-lifetime.ApplicationStopping.Register(() =>
+try
 {
-    logger.LogInformation("=== APPLICATION STOPPING ===");
-});
-
-app.Run();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[ERROR] Application failed to start: {ex.Message}");
+    Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
+    throw;
+}
